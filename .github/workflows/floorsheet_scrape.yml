@@ -1,0 +1,37 @@
+name: Floorsheet Data Auto Scrape
+
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: '30 11 * * *'  # Runs at 11:30 AM UTC (5:15 PM Nepal Time)
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+
+      - name: Install Dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run Scraper
+        run: |
+          python scrape_floorsheet.py
+
+      - name: Commit and Push
+        run: |
+          git config --local user.email "your-email@gmail.com"
+          git config --local user.name "your-github-username"
+          git add .
+          git commit -am "Updated floorsheet data"
+          git push origin main
