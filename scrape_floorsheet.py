@@ -1,29 +1,32 @@
 import chromedriver_autoinstaller
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+import time
 import pandas as pd
 from bs4 import BeautifulSoup
-import time
 
-# Automatically install and use the correct Chrome WebDriver
+# Automatically install the correct version of ChromeDriver
 chromedriver_autoinstaller.install()
 
-# Initialize Chrome WebDriver
+# Set Chrome options
+options = Options()
+# options.add_argument("--headless")  # Uncomment this line if you want to run Chrome in headless mode (no UI)
+# options.add_argument("--user-data-dir=/path/to/new/chrome/profile")  # Ensure this is not causing any conflicts
+
+# Initialize Chrome WebDriver service
 service = Service()
-options = webdriver.ChromeOptions()
-options.add_argument("--start-maximized")  # Maximize window for better scraping
+
+# Initialize the WebDriver
 driver = webdriver.Chrome(service=service, options=options)
 
 # URL of the webpage to scrape
-url = 'https://chukul.com/floorsheet'  # The website you mentioned
+url = 'https://chukul.com/floorsheet'
 driver.get(url)
 
 try:
-    all_data = []  # Store all scraped data
-
+    # Function to scrape the data from the current page
     def scrape_current_page():
         """Scrapes the table data from the current page."""
         print("Scraping current page...")
@@ -50,17 +53,17 @@ try:
 
         return page_data
 
+    # Initialize an empty list to hold all the data
+    all_data = []
+
     # Scrape all pages
     current_page = 1
     while True:
         print(f"Scraping page {current_page}...")
         page_data = scrape_current_page()
-        if not page_data:
-            print("No data found on this page. Exiting...")
-            break
         all_data.extend(page_data)
 
-        # Check for "Next" page button
+        # Check for next page button
         pagination_buttons = driver.find_elements(By.CSS_SELECTOR, 'div.q-pagination__middle button')
         next_page_button = None
         for button in pagination_buttons:
@@ -73,16 +76,22 @@ try:
             current_page += 1
             time.sleep(8)  # Wait for the next page to load
         else:
-            print("No next page button found. Ending the scrape.")
-            break  # Exit the loop if no next page is found
+            print("No next page button found. Assuming this is the last page.")
+            break
 
-    # If no data was scraped, exit
-    if not all_data:
-        print("No data scraped. Exiting script.")
-        driver.quit()
-        exit()
+    # Option to manually scrape a specific page
+    while True:
+        user_input = input("Do you want to scrape a specific page? Type 'yes' to scrape or 'no' to finish: ").strip().lower()
+        if user_input == 'yes':
+            input("Navigate to the desired page in the browser, then press Enter to scrape...")
+            page_data = scrape_current_page()
+            all_data.extend(page_data)
+        elif user_input == 'no':
+            break
+        else:
+            print("Invalid input. Please type 'yes' or 'no'.")
 
-    # Create a DataFrame from the collected data
+    # Create a DataFrame from all the data collected
     df = pd.DataFrame(all_data)
 
     # Define the header names
@@ -94,7 +103,7 @@ try:
     else:
         raise ValueError(f"Column count mismatch. DataFrame has {df.shape[1]} columns, but {len(header)} headers provided.")
 
-    # Function to parse and convert to numeric
+    # Define a function to parse and convert to numeric
     def parse_numeric(value):
         try:
             # Remove all non-numeric characters except '.' for decimals
